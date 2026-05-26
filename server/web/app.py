@@ -74,7 +74,7 @@ def api_history():
         "SELECT id, timestamp, temperature, humidity, soil, water, light, rain, "
         "anomaly, mse_score FROM sensor_data ORDER BY id DESC LIMIT 100"
     )
-    rows = cursor.fetchall()
+    rows = list(cursor.fetchall())
     cursor.close()
     conn.close()
     rows.reverse()
