@@ -12,6 +12,15 @@ fi
 
 echo "=== Farm Dashboard ==="
 echo "Python: $($PY --version)"
+
+# Проверка зависимостей
+echo ""
+echo "Checking dependencies..."
+$PY -c "import flask" 2>/dev/null || { echo "ERROR: Flask не установлен. Выполните: pip install -r requirements.txt"; exit 1; }
+$PY -c "import pymysql" 2>/dev/null || { echo "ERROR: PyMySQL не установлен. Выполните: pip install -r requirements.txt"; exit 1; }
+
+echo "Dependencies OK"
+echo ""
 echo "Server: http://localhost:50002"
 echo ""
 

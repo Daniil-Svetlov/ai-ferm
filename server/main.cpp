@@ -11,7 +11,7 @@ using json = nlohmann::json;
 
 // ─── НАСТРОЙКИ MySQL ─────────────────────────────────────────
 const std::string DB_HOST     = "localhost";
-const std::string DB_USER     = "root";
+const std::string DB_USER     = "farm_user";
 const std::string DB_PASSWORD = "abobik";
 const std::string DB_NAME     = "farm_db";
 const int         DB_PORT     = 3306;

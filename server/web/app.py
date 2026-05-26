@@ -11,7 +11,7 @@ app = Flask(__name__)
 
 DB_CONFIG = {
     "host": "localhost",
-    "user": "root",
+    "user": "farm_user",
     "password": "abobik",
     "database": "farm_db",
     "port": 3306,
@@ -29,7 +29,12 @@ def get_db():
         conn = pymysql.connect(**DB_CONFIG)
         return conn
     except Error as e:
-        print(f"DB error: {e}")
+        print(f"[DB ERROR] {e}")
+        print(f"[DB ERROR] Убедитесь, что:")
+        print(f"  1. MySQL/MariaDB запущен")
+        print(f"  2. Пользователь '{DB_CONFIG['user']}' создан и имеет права на БД '{DB_CONFIG['database']}'")
+        print(f"  3. Пароль верный")
+        print(f"  4. Зависимость 'pymysql' установлена: pip install pymysql")
         return None
 
 

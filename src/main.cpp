@@ -258,15 +258,10 @@ void loop() {
         anomalyDetected = autoencoder.isAnomaly(sensorVals);
         if (anomalyDetected) logToFile("ANOMALY! MSE=" + String(anomalyScore, 2));
         
-        // Вентилятор охлаждения
+        // Вентилятор охлаждения (всегда управляется по температуре, независимо от аномалии)
         fanOn = (temperature >= TEMP_FAN_ON);
-        if (!anomalyDetected) {
-            digitalWrite(PIN_FAN_IN1, LOW);
-            digitalWrite(PIN_FAN_IN2, fanOn ? HIGH : LOW);
-        } else {
-            digitalWrite(PIN_FAN_IN1, LOW);
-            digitalWrite(PIN_FAN_IN2, LOW);
-        }
+        digitalWrite(PIN_FAN_IN1, LOW);
+        digitalWrite(PIN_FAN_IN2, fanOn ? HIGH : LOW);
         
         // Искусственное освещение
         ledOn = (lightValue < LIGHT_LED_ON);
