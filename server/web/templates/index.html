@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Farm Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+       background: #0f172a; color: #e2e8f0; padding: 20px; }
+h1 { font-size: 1.5rem; margin-bottom: 20px; color: #38bdf8; }
+.stats { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.stat-card { background: #1e293b; border-radius: 10px; padding: 12px 18px; min-width: 120px; }
+.stat-card .label { font-size: 0.75rem; color: #94a3b8; }
+.stat-card .value { font-size: 1.4rem; font-weight: 700; margin-top: 2px; }
+
+.sensors { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+           gap: 12px; margin-bottom: 20px; }
+.sensor-card { background: #1e293b; border-radius: 10px; padding: 14px;
+               text-align: center; position: relative; }
+.sensor-card .name { font-size: 0.8rem; color: #94a3b8; }
+.sensor-card .val { font-size: 1.6rem; font-weight: 700; margin: 4px 0; }
+.sensor-card .unit { font-size: 0.75rem; color: #64748b; }
+.sensor-card.anomaly { border: 2px solid #ef4444; }
+.sensor-card.temp .val { color: #f97316; }
+.sensor-card.hum .val { color: #38bdf8; }
+.sensor-card.soil .val { color: #22c55e; }
+.sensor-card.water .val { color: #06b6d4; }
+.sensor-card.light .val { color: #eab308; }
+.sensor-card.rain .val { color: #8b5cf6; }
+.sensor-card.mse .val { color: #ef4444; }
+
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+@media (max-width: 800px) { .charts { grid-template-columns: 1fr; } }
+.chart-box { background: #1e293b; border-radius: 10px; padding: 14px; }
+.chart-box h3 { font-size: 0.85rem; color: #94a3b8; margin-bottom: 8px; }
+.chart-box canvas { width: 100% !important; height: 200px !important; }
+
+.table-wrap { background: #1e293b; border-radius: 10px; padding: 14px; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+th { text-align: left; padding: 8px 10px; color: #94a3b8; border-bottom: 1px solid #334155; }
+td { padding: 6px 10px; border-bottom: 1px solid #1e293b; }
+tr:hover td { background: #0f172a40; }
+tr.anomaly-row td { color: #fca5a5; }
+.badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 0.7rem;
+         font-weight: 600; }
+.badge-ok { background: #166534; color: #bbf7d0; }
+.badge-anomaly { background: #991b1b; color: #fecaca; }
+
+.alert-bar { background: #7f1d1d; color: #fecaca; padding: 8px 14px; border-radius: 8px;
+             margin-bottom: 14px; display: none; font-size: 0.9rem; font-weight: 600; }
+.alert-bar.active { display: block; }
+
+.tab-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+.tab-btn { background: #1e293b; border: none; color: #94a3b8; padding: 8px 16px;
+           border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+.tab-btn.active { background: #38bdf8; color: #0f172a; font-weight: 600; }
+.tab-btn:hover { background: #334155; }
+.page { display: none; }
+.page.active { display: block; }
+</style>
+</head>
+<body>
+
+<h1>🌿 Farm Dashboard</h1>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('dashboard')">📊 Dashboard</button>
+  <button class="tab-btn" onclick="showTab('anomalies')">⚠️ Anomalies</button>
+</div>
+
+<div id="page-dashboard" class="page active">
+  <div class="stats" id="stats"></div>
+
+  <div class="alert-bar" id="alertBar">⚠️ Anomaly detected!</div>
+
+  <div class="sensors" id="sensors"></div>
+
+  <div class="charts">
+    <div class="chart-box"><h3>🌡️ Temperature & Humidity</h3><canvas id="chartTempHum"></canvas></div>
+    <div class="chart-box"><h3>💧 Soil & Water</h3><canvas id="chartSoilWater"></canvas></div>
+    <div class="chart-box"><h3>☀️ Light</h3><canvas id="chartLight"></canvas></div>
+    <div class="chart-box"><h3>🌧️ Rain (Steam) & MSE</h3><canvas id="chartRainMse"></canvas></div>
+  </div>
+
+  <div class="table-wrap">
+    <table id="historyTable">
+      <thead><tr>
+        <th>Time</th><th>Temp</th><th>Hum</th><th>Soil</th><th>Water</th><th>Light</th><th>Rain</th><th>Status</th><th>MSE</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="page-anomalies" class="page">
+  <h2 style="color:#fca5a5;margin-bottom:12px;">⚠️ Anomaly Log</h2>
+  <div class="table-wrap">
+    <table id="anomalyTable">
+      <thead><tr>
+        <th>Time</th><th>Temp</th><th>Hum</th><th>Soil</th><th>Water</th><th>Light</th><th>Rain</th><th>MSE</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+let charts = {};
+let prevAnomaly = false;
+
+function showTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab-btn[onclick*='${name}']`).classList.add('active');
+  document.getElementById(`page-${name}`).classList.add('active');
+}
+
+function fmtTime(ts) {
+  const d = new Date(ts);
+  return d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function fmtDate(ts) {
+  const d = new Date(ts);
+  return d.toLocaleString('ru-RU');
+}
+
+function renderStats(data) {
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card"><div class="label">Всего замеров</div><div class="value">${data.total_readings}</div></div>
+    <div class="stat-card"><div class="label">Аномалий</div><div class="value">${data.total_anomalies}</div></div>
+    <div class="stat-card"><div class="label">Средняя T</div><div class="value">${data.avg_temperature}°C</div></div>
+    <div class="stat-card"><div class="label">Средняя H</div><div class="value">${data.avg_humidity}%</div></div>
+    <div class="stat-card"><div class="label">Сбор с</div><div class="value" style="font-size:0.9rem">${data.since}</div></div>
+  `;
+}
+
+function renderSensors(r) {
+  const anomaly = r.anomaly;
+  const cls = anomaly ? 'anomaly' : '';
+  document.getElementById('sensors').innerHTML = `
+    <div class="sensor-card temp ${cls}">
+      <div class="name">🌡️ Temperature</div>
+      <div class="val">${r.temperature.toFixed(1)}<span style="font-size:0.8rem">°C</span></div>
+    </div>
+    <div class="sensor-card hum ${cls}">
+      <div class="name">💧 Humidity</div>
+      <div class="val">${r.humidity.toFixed(0)}<span style="font-size:0.8rem">%</span></div>
+    </div>
+    <div class="sensor-card soil ${cls}">
+      <div class="name">🪴 Soil</div>
+      <div class="val">${r.soil}</div>
+    </div>
+    <div class="sensor-card water ${cls}">
+      <div class="name">💦 Water</div>
+      <div class="val">${r.water}</div>
+    </div>
+    <div class="sensor-card light ${cls}">
+      <div class="name">☀️ Light</div>
+      <div class="val">${r.light}</div>
+    </div>
+    <div class="sensor-card rain ${cls}">
+      <div class="name">🌧️ Rain</div>
+      <div class="val">${r.rain}</div>
+    </div>
+    <div class="sensor-card mse ${cls}">
+      <div class="name">🧠 MSE</div>
+      <div class="val">${r.mse_score.toFixed(4)}</div>
+      <div class="unit">threshold: ${anomaly ? 'EXCEEDED' : 'normal'}</div>
+    </div>
+    <div class="sensor-card" style="grid-column:span ${anomaly?1:1}">
+      <div class="name">⏱️ Last update</div>
+      <div class="val" style="font-size:1rem">${fmtTime(r.timestamp)}</div>
+    </div>
+  `;
+
+  const bar = document.getElementById('alertBar');
+  if (anomaly) {
+    bar.classList.add('active');
+    bar.textContent = `⚠️ Anomaly detected! MSE = ${r.mse_score.toFixed(4)} (threshold: 0.0975)`;
+    if (!prevAnomaly) {
+      bar.style.animation = 'none';
+      setTimeout(() => bar.style.animation = '', 10);
+    }
+    prevAnomaly = true;
+  } else {
+    bar.classList.remove('active');
+    prevAnomaly = false;
+  }
+}
+
+function initCharts() {
+  const opts = {
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: 300 },
+    scales: {
+      x: { ticks: { color: '#64748b', maxTicksLimit: 8, maxRotation: 0 },
+           grid: { color: '#1e293b' } },
+      y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
+    },
+    plugins: { legend: { labels: { color: '#94a3b8', boxWidth: 12, padding: 8 } } }
+  };
+
+  charts.tempHum = new Chart(document.getElementById('chartTempHum'), {
+    type: 'line', data: { labels: [], datasets: [
+      { label: 'Temp °C', data: [], borderColor: '#f97316', backgroundColor: '#f9731620', fill: true, tension: 0.3, pointRadius: 2 },
+      { label: 'Hum %',   data: [], borderColor: '#38bdf8', backgroundColor: '#38bdf820', fill: true, tension: 0.3, pointRadius: 2, yAxisID: 'y1' },
+    ]},
+    options: { ...opts, scales: { ...opts.scales, y1: { position: 'right', grid: { display: false }, ticks: { color: '#38bdf8' } } } }
+  });
+
+  charts.soilWater = new Chart(document.getElementById('chartSoilWater'), {
+    type: 'line', data: { labels: [], datasets: [
+      { label: 'Soil', data: [], borderColor: '#22c55e', tension: 0.3, pointRadius: 2 },
+      { label: 'Water', data: [], borderColor: '#06b6d4', tension: 0.3, pointRadius: 2 },
+    ]}, options: opts
+  });
+
+  charts.light = new Chart(document.getElementById('chartLight'), {
+    type: 'line', data: { labels: [], datasets: [
+      { label: 'Light', data: [], borderColor: '#eab308', backgroundColor: '#eab30820', fill: true, tension: 0.3, pointRadius: 2 },
+    ]}, options: opts
+  });
+
+  charts.rainMse = new Chart(document.getElementById('chartRainMse'), {
+    type: 'line', data: { labels: [], datasets: [
+      { label: 'Rain', data: [], borderColor: '#8b5cf6', tension: 0.3, pointRadius: 2 },
+      { label: 'MSE×1000', data: [], borderColor: '#ef4444', tension: 0.3, pointRadius: 2, borderDash: [4,4] },
+    ]}, options: opts
+  });
+}
+
+function updateCharts(rows) {
+  const labels = rows.map(r => fmtTime(r.timestamp));
+  
+  charts.tempHum.data.labels = labels;
+  charts.tempHum.data.datasets[0].data = rows.map(r => r.temperature);
+  charts.tempHum.data.datasets[1].data = rows.map(r => r.humidity);
+  charts.tempHum.update('none');
+
+  charts.soilWater.data.labels = labels;
+  charts.soilWater.data.datasets[0].data = rows.map(r => r.soil);
+  charts.soilWater.data.datasets[1].data = rows.map(r => r.water);
+  charts.soilWater.update('none');
+
+  charts.light.data.labels = labels;
+  charts.light.data.datasets[0].data = rows.map(r => r.light);
+  charts.light.update('none');
+
+  charts.rainMse.data.labels = labels;
+  charts.rainMse.data.datasets[0].data = rows.map(r => r.rain);
+  charts.rainMse.data.datasets[1].data = rows.map(r => +(r.mse_score * 1000).toFixed(2));
+  charts.rainMse.update('none');
+}
+
+function renderTable(rows) {
+  const tbody = document.querySelector('#historyTable tbody');
+  tbody.innerHTML = rows.slice(0, 30).map(r => `
+    <tr class="${r.anomaly ? 'anomaly-row' : ''}">
+      <td>${fmtTime(r.timestamp)}</td>
+      <td>${r.temperature.toFixed(1)}</td>
+      <td>${r.humidity.toFixed(0)}</td>
+      <td>${r.soil}</td>
+      <td>${r.water}</td>
+      <td>${r.light}</td>
+      <td>${r.rain}</td>
+      <td><span class="badge ${r.anomaly ? 'badge-anomaly' : 'badge-ok'}">${r.anomaly ? 'ANOMALY' : 'OK'}</span></td>
+      <td>${(r.mse_score || 0).toFixed(4)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderAnomalies(rows) {
+  const tbody = document.querySelector('#anomalyTable tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#64748b;padding:20px;">No anomalies detected yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${fmtDate(r.timestamp)}</td>
+      <td>${r.temperature.toFixed(1)}</td>
+      <td>${r.humidity.toFixed(0)}</td>
+      <td>${r.soil}</td>
+      <td>${r.water}</td>
+      <td>${r.light}</td>
+      <td>${r.rain}</td>
+      <td style="color:#fca5a5;font-weight:600">${r.mse_score.toFixed(4)}</td>
+    </tr>
+  `).join('');
+}
+
+async function fetchAll() {
+  try {
+    const [latest, history, stats, anomalies] = await Promise.all([
+      fetch('/api/latest').then(r => r.json()),
+      fetch('/api/history').then(r => r.json()),
+      fetch('/api/stats').then(r => r.json()),
+      fetch('/api/anomalies').then(r => r.json()),
+    ]);
+
+    if (stats.ok) renderStats(stats.data);
+    if (latest.ok) renderSensors(latest.data);
+    if (history.ok) {
+      if (!charts.tempHum) initCharts();
+      updateCharts(history.data);
+      renderTable(history.data);
+    }
+    if (anomalies.ok) renderAnomalies(anomalies.data);
+  } catch (e) {
+    console.error('Fetch error:', e);
+  }
+}
+
+initCharts();
+fetchAll();
+setInterval(fetchAll, 3000);
+</script>
+</body>
+</html>
