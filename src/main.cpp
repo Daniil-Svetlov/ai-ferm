@@ -164,7 +164,7 @@ void updateLCD() {
         case 3:
             lcd.setCursor(0,0); lcd.print(anomalyDetected ? "ANOMALY!" : "All OK  ");
             lcd.setCursor(0,1); lcd.print("MSE:"); lcd.print(anomalyScore, 2);
-            lcd.setCursor(14,1); lcd.print("4");
+            lcd.setCursor(14,1); lcd.print(anomalyChar); lcd.print("4");
             break;
     }
 }
@@ -261,8 +261,11 @@ void loop() {
         // Вентилятор охлаждения
         fanOn = (temperature >= TEMP_FAN_ON);
         if (!anomalyDetected) {
-            digitalWrite(PIN_FAN_IN1, LOW); 
+            digitalWrite(PIN_FAN_IN1, LOW);
             digitalWrite(PIN_FAN_IN2, fanOn ? HIGH : LOW);
+        } else {
+            digitalWrite(PIN_FAN_IN1, LOW);
+            digitalWrite(PIN_FAN_IN2, LOW);
         }
         
         // Искусственное освещение

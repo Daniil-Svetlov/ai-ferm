@@ -18,6 +18,12 @@ DB_CONFIG = {
 }
 
 
+def _fix_timestamp(row):
+    if row and "timestamp" in row and row["timestamp"]:
+        row["timestamp"] = row["timestamp"].isoformat()
+    return row
+
+
 def get_db():
     try:
         conn = pymysql.connect(**DB_CONFIG)
@@ -49,6 +55,7 @@ def api_latest():
         return jsonify({"ok": False, "error": "No data"}), 404
     row["anomaly"] = bool(row["anomaly"])
     row["mse_score"] = float(row["mse_score"]) if row["mse_score"] else 0
+    _fix_timestamp(row)
     return jsonify({"ok": True, "data": row})
 
 
@@ -68,6 +75,7 @@ def api_history():
     rows.reverse()
     for r in rows:
         r["anomaly"] = bool(r["anomaly"])
+        _fix_timestamp(r)
     return jsonify({"ok": True, "data": rows})
 
 
@@ -84,6 +92,8 @@ def api_anomalies():
     rows = cursor.fetchall()
     cursor.close()
     conn.close()
+    for r in rows:
+        _fix_timestamp(r)
     return jsonify({"ok": True, "data": rows})
 
 
@@ -97,10 +107,7 @@ def api_stats():
     count, avg_temp, avg_hum = cursor.fetchone()
     cursor.execute("SELECT COUNT(*) FROM sensor_data WHERE anomaly = 1")
     anom_count = cursor.fetchone()[0]
-    cursor.execute(
-        "SELECT MIN(timestamp) FROM sensor_data "
-        "ORDER BY id ASC LIMIT 1"
-    )
+    cursor.execute("SELECT MIN(timestamp) FROM sensor_data")
     since_row = cursor.fetchone()
     cursor.close()
     conn.close()

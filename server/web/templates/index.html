@@ -118,12 +118,12 @@ function showTab(name) {
 }
 
 function fmtTime(ts) {
-  const d = new Date(ts);
+  const d = new Date(ts.replace(' ', 'T'));
   return d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
 
 function fmtDate(ts) {
-  const d = new Date(ts);
+  const d = new Date(ts.replace(' ', 'T'));
   return d.toLocaleString('ru-RU');
 }
 
